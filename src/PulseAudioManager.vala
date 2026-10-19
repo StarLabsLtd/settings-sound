@@ -428,7 +428,8 @@ public class Sound.PulseAudioManager : GLib.Object {
         };
         if (input) {
             operation = context.get_source_info_list ((c, info, eol) => {
-                if (info != null && info.name != EchoCancellation.SOURCE_NAME) {
+                if (info != null && info.name != EchoCancellation.SOURCE_NAME &&
+                    info.monitor_of_sink == PulseAudio.INVALID_INDEX) {
                     devices.add (info.index);
                 }
                 if (eol < 0) {
