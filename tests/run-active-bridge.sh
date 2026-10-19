@@ -31,6 +31,7 @@ valac --pkg libpulse --pkg libpulse-mainloop-glib --pkg gio-2.0 --pkg libpulse-o
     -X -fsanitize=address -X -fno-omit-frame-pointer -X -g \
     -X tests/bridge-profile.o -X -lwireplumber-0.5 -X -lm -o tests/bridge-audio-owner \
     "$daemon_source/src/Backends/EchoProcessor.vala" "$daemon_source/src/Backends/Audio.vala" \
+    "$daemon_source/src/Backends/EqualizerControl.vala" \
     "$daemon_source/src/Backends/SpeakerEqualizer.vala" tests/aec-regression/audio-owner.vala \
     > tests/bridge-owner-build.log 2>&1
 valac --pkg gtk4 --pkg granite-7 --pkg gee-0.8 --pkg libpulse --pkg gio-2.0 --pkg json-glib-1.0 \
