@@ -4,6 +4,7 @@
 The exported card has synthetic speaker/headphone Route metadata; no hardware
 is exercised. Generic cases load the shipped WirePlumber graph policy.
 """
+import configparser
 import json
 import os
 from pathlib import Path
@@ -313,7 +314,14 @@ try:
             check('invalid_profile_enable_does_not_fallback', bypassed() and not receive()['available'])
             raise SystemExit(0)
         if generic_case == 'oem-valid':
-            recommended = [7.5,8,-0.5,1.5,.5]
+            path = profiles/(profile_id+'.ini')
+            profile = configparser.ConfigParser()
+            profile.optionxform = str
+            profile.read(path)
+            recommended = [float(value) for value in profile['Profile']['DefaultGains'].split(';') if value]
+            assert len(recommended) == 5
+            foreign = [-7, *recommended[1:]]
+            custom = [-6, *recommended[1:]]
             wait(lambda:receive().get('available') and last.get('applied') and last.get('enabled') and curve(recommended,1))
             check('native_oem_recommendations_and_policy_start_on', last['gains'] == recommended)
             run(['pw-cli','set-param',str(sink_id),'Props',json.dumps(dict(params=['eos_eq_1:Gain',-7.]))])
@@ -321,21 +329,22 @@ try:
             send('gtk-reset')
             time.sleep(.3)
             check('unchanged_oem_reset_does_not_authorize_failed_audit',
-                  bool(receive().get('error')) and curve([-7,8,-0.5,1.5,.5],1))
+                  bool(receive().get('error')) and curve(foreign,1))
             send('zero')
             wait(lambda:receive().get('applied') and last.get('gains') == [0]*5 and curve([0]*5,1))
             check('native_oem_explicit_zero_applies_unity', last['enabled'])
             send('gtk-reset')
             wait(lambda:receive().get('applied') and curve(recommended,1))
             send('gtk-gain 0 -6')
-            wait(lambda:receive().get('applied') and curve([-6,8,-0.5,1.5,.5],1))
+            wait(lambda:receive().get('applied') and curve(custom,1))
             send('gtk-toggle')
             wait(lambda:not receive().get('enabled',True) and last.get('applied') and bypassed())
-            check('native_oem_off_retains_saved_gains', last['gains'] == [-6,8,-0.5,1.5,.5])
-            path = profiles/(profile_id+'.ini')
-            path.write_text(path.read_text().replace('DefaultGains=7.5;8;-0.5;1.5;0.5;', 'DefaultGains=0;0;0;0;0;'))
+            check('native_oem_off_retains_saved_gains', last['gains'] == custom)
+            profile['Profile']['DefaultGains'] = '0;0;0;0;0;'
+            with path.open('w') as output:
+                profile.write(output)
             send('gtk-toggle')
-            wait(lambda:receive().get('enabled') and last.get('applied') and curve([-6,8,-0.5,1.5,.5],1))
+            wait(lambda:receive().get('enabled') and last.get('applied') and curve(custom,1))
             check('native_policy_refresh_preserves_personal_gains', True)
             send('gtk-reset')
             wait(lambda:receive().get('enabled') and last.get('applied') and
