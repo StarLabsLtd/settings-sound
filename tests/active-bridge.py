@@ -474,9 +474,15 @@ try:
         run(['pw-cli','set-param',str(sink_id),'Props',json.dumps(dict(params=['eos_eq_1:Freq',201.]))])
         wait(lambda:receive().get('error') and not last.get('applied'))
         run(['pactl','set-default-sink',usb_name])
+        wait(lambda:receive().get('error') and not last.get('busy'))
+        check('failed_retirement_retains_old_output', last.get('node') == node_name and
+              not last.get('applied') and bypassed(usb_id))
+        check('failed_retirement_preserves_foreign_controls',
+              curve([3,0,0,0,0],1) and props()['eos_eq_1:Freq'] == 201.)
+        run(['pw-cli','set-param',str(sink_id),'Props',
+             json.dumps(dict(params=['audioconvert.filter-graph.0','']))])
         wait(lambda:receive().get('node') == usb_name and last.get('applied') and curve([-6,0,0,0,0],1,usb_id))
-        check('failed_retirement_does_not_block_another_output', curve([3,0,0,0,0],1) and props()['eos_eq_1:Freq'] == 201.)
-        run(['pw-cli','set-param',str(sink_id),'Props',json.dumps(dict(params=['eos_eq_1:Freq',200.]))])
+        check('external_graph_removal_completes_retirement', bypassed())
         run(['pactl','set-default-sink',node_name])
         wait(lambda:receive().get('node') == node_name and last.get('applied') and curve([3,0,0,0,0],1))
         run(['pw-cli','destroy',str(usb_id)])
@@ -640,6 +646,7 @@ try:
         run(['pw-cli','destroy',str(native_clients()[0]['id'])])
         wait(lambda:receive().get('error') and not last['applied'])
         run(['pw-cli','set-param',str(sink_id),'Props',json.dumps(dict(params=['eos_eq_1:Gain',-8.]))])
+        wait(lambda:curve([-8,-2,-3,-4,-5],1))
         time.sleep(3.5)
         receive()
         check('foreign_gain_survives_reconnect', bool(last['error']) and not last['applied'] and curve([-8,-2,-3,-4,-5],1))
@@ -739,19 +746,24 @@ try:
         run(['pw-cli','destroy',str(sink_id)])
         wait(lambda:not receive().get('available') and not last.get('applied'))
         check('node_removal_revokes_confirmation', True)
-        cli(['create-node adapter { factory.name = support.null-audio-sink node.name = elementary.eq.test '
-             f'media.class = Audio/Sink device.id = {card_id} card.profile.device = 0 '
-             'elementary.eq.profile = fixture-v1 node.cache-params = false audio.channels = 2 '
-             'audio.position = [ FL FR ] priority.session = 1000 object.linger = true }'])
-        wait(lambda:any(s['name']==node_name for s in sinks()))
-        replacement = next(o for o in objects() if o.get('info',{}).get('props',{}).get('node.name')=='elementary.eq.test')
-        sink_id = replacement['id']
-        graph_nodes[0]['control']['Freq']=106.
-        bad_graph=json.dumps(dict(nodes=graph_nodes,links=links))
-        cli([f'set-param {sink_id} PortConfig '+json.dumps(dict(direction='Input',mode='dsp',format=fmt)),
-             f'set-param {sink_id} Props '+json.dumps(dict(params=['audioconvert.filter-graph.0',bad_graph]))])
-        run(['pactl','set-default-sink',node_name])
-        linked(True)
+        owner.send_signal(signal.SIGSTOP)
+        try:
+            cli(['create-node adapter { factory.name = support.null-audio-sink node.name = elementary.eq.test '
+                 f'media.class = Audio/Sink device.id = {card_id} card.profile.device = 0 '
+                 'elementary.eq.profile = fixture-v1 node.cache-params = false audio.channels = 2 '
+                 'audio.position = [ FL FR ] priority.session = 1000 object.linger = true }'])
+            wait(lambda:any(s['name']==node_name for s in sinks()))
+            replacement = next(o for o in objects() if o.get('info',{}).get('props',{}).get('node.name')=='elementary.eq.test')
+            sink_id = replacement['id']
+            graph_nodes[0]['control']['Freq']=106.
+            bad_graph=json.dumps(dict(nodes=graph_nodes,links=links))
+            cli([f'set-param {sink_id} PortConfig '+json.dumps(dict(direction='Input',mode='dsp',format=fmt)),
+                 f'set-param {sink_id} Props '+json.dumps(dict(params=['audioconvert.filter-graph.0',bad_graph]))])
+            run(['pactl','set-default-sink',node_name])
+            linked(True)
+            wait(lambda:len(props()) == 48 and props().get('eos_eq_1:Freq') == 106.)
+        finally:
+            owner.send_signal(signal.SIGCONT)
         wait(lambda:receive().get('error')=='The equalizer does not match its installed profile.')
         check('replacement_serial_with_mismatched_graph_refused', replacement['info']['props']['object.serial']!=old_serial and not last['applied'])
 except Exception as exc:
