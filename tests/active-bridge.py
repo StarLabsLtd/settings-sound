@@ -26,7 +26,8 @@ node_name = 'alsa_output.pci-0000_00_1f.3.analog-stereo' if generic else 'elemen
 legacy = os.environ.get('EQ_LEGACY') == '1'
 cache_probe = os.environ.get('EQ_TEST_CACHE_PARAMS') == '1'
 restart_probe = os.environ.get('EQ_SERVER_RESTART_TEST') == '1'
-evidence = base / ('bridge-server-restart-results' if restart_probe else 'bridge-generic-'+generic_case if generic else 'bridge-cache-results' if cache_probe else 'bridge-legacy-results' if legacy else 'bridge-results')
+missing_native = os.environ.get('EQ_MISSING_NATIVE_TEST') == '1'
+evidence = base / ('bridge-missing-native-results' if missing_native else 'bridge-server-restart-results' if restart_probe else 'bridge-generic-'+generic_case if generic else 'bridge-cache-results' if cache_probe else 'bridge-legacy-results' if legacy else 'bridge-results')
 evidence.mkdir(exist_ok=True)
 runtime = Path(tempfile.mkdtemp(prefix='vale-sound-eq-bridge-'))
 profiles = Path(os.environ['EQ_TEST_PROFILE_DIR'])
@@ -79,6 +80,8 @@ text = Path('/usr/share/pipewire/pipewire.conf').read_text()
 text = text.replace('context.spa-libs = {', 'context.spa-libs = {\n    audiotestsrc = audiotestsrc/libspa-audiotestsrc')
 text = re.sub(r'core.name\s*=\s*pipewire-0', 'core.name = elementary-eq-bridge', text)
 (config/'pipewire.conf').write_text(text)
+if missing_native:
+    (config/'empty.conf').write_text(text.replace('core.name = elementary-eq-bridge', 'core.name = elementary-eq-empty'))
 (config/'client.conf').write_text(Path('/usr/share/pipewire/client.conf').read_text())
 (config/'pipewire-pulse.conf').write_text(Path('/usr/share/pipewire/pipewire-pulse.conf').read_text().replace('unix:native', 'unix:'+str(runtime/'native')))
 if generic:
@@ -111,7 +114,10 @@ def backend_status(record=False):
 
 def start(name, args, **kwargs):
     log = (evidence/(name+'.log')).open('w'); logs.append(log)
-    p = subprocess.Popen(args, env=(dict(env,G_MESSAGES_DEBUG='all') if name=='audio-owner' else env), stderr=log, start_new_session=True, **(dict(stdout=log) | kwargs))
+    process_env = dict(env, G_MESSAGES_DEBUG='all') if name == 'audio-owner' else env
+    if name == 'audio-owner' and missing_native:
+        process_env['PIPEWIRE_REMOTE'] = 'elementary-eq-empty'
+    p = subprocess.Popen(args, env=process_env, stderr=log, start_new_session=True, **(dict(stdout=log) | kwargs))
     processes.append(p)
     return p
 
@@ -253,8 +259,27 @@ try:
         run(['pactl','set-default-sink',hdmi_name])
     if not (legacy or cache_probe):
         check('no_graph_before_processing_is_enabled', bypassed())
+    if missing_native:
+        start('empty-pipewire', ['pipewire', '-c', 'empty.conf'])
+        wait(lambda:(runtime/'elementary-eq-empty').exists())
     owner = start('audio-owner', [str(base/'bridge-audio-owner')])
     run(['gdbus','wait','--session','--timeout=5','io.elementary.settings-daemon'])
+    if missing_native:
+        start('status-events', ['stdbuf', '-oL', 'gdbus', 'monitor', '--session',
+              '--dest', 'io.elementary.settings-daemon'])
+        time.sleep(1)
+        status = backend_status(True)
+        check('missing_native_probe_uses_valid_profile',
+              '[200.0, 240.0, 1000.0, 16000.0, 200.0]' in status)
+        before = (evidence/'status-events.log').read_text().count('EqualizerChanged')
+        time.sleep(1)
+        after = (evidence/'status-events.log').read_text().count('EqualizerChanged')
+        observations.append(dict(idle_notifications=after-before, seconds=1))
+        check('missing_native_node_does_not_poll_while_disabled', after-before <= 2)
+        status = backend_status(True)
+        check('missing_native_node_is_not_applied', status.startswith('((false, false, false,'))
+        check('missing_native_node_does_not_write_remote_graph', bypassed())
+        raise SystemExit(0)
     env['GTK_A11Y']='none'
     client = start('sound-model', ['xvfb-run','-a',str(base/'bridge-client')], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
     messages = queue.Queue()
