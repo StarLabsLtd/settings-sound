@@ -23,6 +23,12 @@ valac --pkg gtk4 --pkg granite-7 --pkg gee-0.8 --pkg libpulse --pkg gio-2.0 \
 GSETTINGS_BACKEND=memory GSETTINGS_SCHEMA_DIR="$PWD/tests/schemas" GTK_A11Y=none \
     dbus-run-session -- xvfb-run -a tests/gtk-controls > tests/gtk-controls.log 2>&1
 
+valac --pkg gtk4 --pkg granite-7 --pkg gee-0.8 --pkg libpulse --pkg libpulse-mainloop-glib --pkg gio-2.0 \
+    --pkg libpulse-ext --vapidir=vapi -X '-DGETTEXT_PACKAGE="io.elementary.settings.sound"' \
+    -o tests/selection-owner-loss src/EchoCancellation.vala src/PulseAudioManager.vala \
+    src/Device.vala src/App.vala tests/selection-owner-loss.vala > tests/selection-build.log 2>&1
+GSETTINGS_SCHEMA_DIR="$PWD/tests/schemas" python3 tests/run-selection-owner-loss.py tests/selection-owner-loss
+
 # The combined bridge builds the production owner through generated WP bindings.
 sh tests/run-active-bridge.sh "$daemon_source"
 cp tests/bridge-audio-owner tests/aec-regression/audio-owner

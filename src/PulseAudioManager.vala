@@ -1226,6 +1226,7 @@ public class Sound.PulseAudioManager : GLib.Object {
         });
         ulong selection_handler = device_selection_finished.connect (() => finish ());
         ulong busy_handler = echo_cancellation.notify["busy"].connect (() => finish ());
+        ulong enabled_handler = echo_cancellation.notify["enabled"].connect (() => finish ());
         ulong master_handler = echo_cancellation.notify[input ? "source-master" : "sink-master"].connect (() => finish ());
         deadline.set_callback (() => {
             expired = true;
@@ -1238,6 +1239,7 @@ public class Sound.PulseAudioManager : GLib.Object {
         disconnect (default_handler);
         disconnect (selection_handler);
         echo_cancellation.disconnect (busy_handler);
+        echo_cancellation.disconnect (enabled_handler);
         echo_cancellation.disconnect (master_handler);
         // A queued selector rechecks and reserves the guard without yielding.
         return !expired && (target == null || settled ());
