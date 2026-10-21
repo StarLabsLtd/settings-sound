@@ -40,6 +40,12 @@ valac --pkg gtk4 --pkg granite-7 --pkg gee-0.8 --pkg libpulse --pkg gio-2.0 --pk
     tests/bridge-client.vala > tests/bridge-client-build.log 2>&1
 ASAN_OPTIONS=detect_leaks=0 EQ_DAEMON_SOURCE="$daemon_source" EQ_TEST_PROFILE_DIR="$profile_root/v1" EQ_TEST_PROFILE="$daemon_source/tests/fixture-v1.ini" \
     python3 tests/active-bridge.py
+if [ "${EQ_MISSING_NATIVE_TEST:-}" = 1 ]; then
+    exit 0
+fi
+ASAN_OPTIONS=detect_leaks=0 EQ_DAEMON_SOURCE="$daemon_source" EQ_MISSING_NATIVE_TEST=1 \
+    EQ_TEST_PROFILE_DIR="$profile_root/v1" EQ_TEST_PROFILE="$daemon_source/tests/fixture-v1.ini" \
+    python3 tests/active-bridge.py
 ASAN_OPTIONS=detect_leaks=0 EQ_DAEMON_SOURCE="$daemon_source" EQ_SERVER_RESTART_TEST=1 \
     EQ_TEST_PROFILE_DIR="$profile_root/v1" EQ_TEST_PROFILE="$daemon_source/tests/fixture-v1.ini" \
     python3 tests/active-bridge.py
