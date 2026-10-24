@@ -8,6 +8,8 @@
 public class Sound.InputPanel : Switchboard.SettingsPage {
     private Device? default_device = null;
     private Gtk.LevelBar level_bar;
+    private Gtk.Grid volume_grid;
+    private Gtk.Grid echo_grid;
     private Gtk.ListBox devices_listbox;
     private Gtk.Scale volume_scale;
     private Gtk.Switch volume_switch;
@@ -72,7 +74,7 @@ public class Sound.InputPanel : Switchboard.SettingsPage {
         level_bar.add_offset_value ("high", 0.95);
         level_bar.add_offset_value ("full", 1.0);
 
-        var volume_grid = new Gtk.Grid () {
+        volume_grid = new Gtk.Grid () {
             column_spacing = 12,
             row_spacing = 3
         };
@@ -106,7 +108,7 @@ public class Sound.InputPanel : Switchboard.SettingsPage {
         };
         echo_status.add_css_class (Granite.STYLE_CLASS_DIM_LABEL);
 
-        var echo_grid = new Gtk.Grid () {
+        echo_grid = new Gtk.Grid () {
             column_spacing = 12,
             row_spacing = 3
         };
@@ -135,7 +137,7 @@ public class Sound.InputPanel : Switchboard.SettingsPage {
             default_changed ();
         });
 
-        connect_signals ();
+        default_changed ();
     }
 
     private void echo_status_changed () {
@@ -191,6 +193,7 @@ public class Sound.InputPanel : Switchboard.SettingsPage {
             }
 
             default_device = pam.default_input;
+            volume_grid.visible = echo_grid.visible = default_device != null;
             volume_switch.sensitive = default_device != null;
             volume_scale.sensitive = default_device != null && !default_device.is_muted;
             if (default_device == null) {
