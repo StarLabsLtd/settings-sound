@@ -640,7 +640,11 @@ try:
         wait(lambda:receive().get('route')=='fixture-speaker' and last.get('applied') and curve([-6,-2,-3,-4,-5],1))
         check('speaker_route_return_reapplies_preferences', True)
         linked(False)
-        wait(lambda:not receive().get('applied'))
+        wait(lambda:next(o['info']['state'] for o in objects() if o['id'] == sink_id) in ('idle', 'suspended'))
+        wait(lambda:receive().get('applied') and last.get('gtk_switch_state'))
+        send('gtk-reopen')
+        wait(lambda:receive().get('applied') and last.get('gtk_switch_state'))
+        check('reopened_idle_panel_keeps_confirmed_switch', True)
         time.sleep(1.2)
         linked(True)
         wait(lambda:receive().get('applied') and curve([-6,-2,-3,-4,-5],1))
@@ -649,7 +653,7 @@ try:
                 ('eos_eq_1:Gain', -7., [-7,-2,-3,-4,-5], 1),
                 ('eos_eq_h:Mult', .125, [-6,-2,-3,-4,-5], .125)):
             linked(False)
-            wait(lambda:not receive().get('applied'))
+            wait(lambda:next(o['info']['state'] for o in objects() if o['id'] == sink_id) in ('idle', 'suspended'))
             time.sleep(1.2)
             run(['pw-cli','set-param',str(sink_id),'Props',json.dumps(dict(params=[control,value]))])
             linked(True)

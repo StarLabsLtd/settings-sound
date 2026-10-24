@@ -83,6 +83,16 @@ int main () {
             toggle.activate ();
             device.notify_property ("description"); // Refresh must not cancel the user's pending toggle.
         }
+        else if (line == "gtk-reopen") {
+            window.child = null;
+            panel = new Sound.SpeakerEqualizerPanel ();
+            panel.set_device (device);
+            window.child = panel;
+            var new_header = (Gtk.Box) panel.get_first_child ();
+            toggle = (Gtk.Switch) new_header.get_last_child ();
+            bands = (Gtk.Grid) new_header.get_next_sibling ();
+            reset = (Gtk.Button) bands.get_next_sibling ();
+        }
         else if (line == "gtk-zero") {
             for (int band = 0; band < 5; band++) {
                 ((Gtk.Scale) bands.get_child_at (1, band)).set_value (0);
