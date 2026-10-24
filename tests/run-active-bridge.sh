@@ -3,6 +3,8 @@
 set -eu
 test "${EQ_PRIVATE_TEST:-}" = 1
 test ! -e /dev/snd
+export GSK_RENDERER=cairo
+export GDK_DISABLE=gl,egl,glx,vulkan
 test "$(id -u)" = 0
 test -f "${EQ_OEM_RULE:?Pass the reviewed OEM 51 WirePlumber rule for ordering checks}"
 test -f "${EQ_OEM_PROFILE:?Pass the matching reviewed OEM profile}"
