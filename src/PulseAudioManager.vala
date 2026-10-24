@@ -938,7 +938,9 @@ public class Sound.PulseAudioManager : GLib.Object {
         // retrieve relevant ports
         PulseAudio.CardPortInfo*[] relevant_ports = {};
         foreach (var port in card.ports) {
-            if (port.available == PulseAudio.PortAvailable.NO) {
+            if (port.available == PulseAudio.PortAvailable.NO ||
+                (port.name == "analog-input-internal-mic" &&
+                 card.proplist.gets ("device.echo_cancel.policy") == "vale-detached-camera")) {
                 continue;
             }
 
