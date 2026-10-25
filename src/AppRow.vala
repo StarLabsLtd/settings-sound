@@ -111,10 +111,10 @@ public class Sound.AppRow : Gtk.Grid {
 
         app.changed.connect (update);
         app.notify["hidden"].connect (() => {
-            visible = app.hidden;
+            visible = !app.hidden;
         });
 
-        visible = app.hidden;
+        visible = !app.hidden;
 
         volume_scale.set_value (app.volume);
     }
