@@ -127,8 +127,20 @@ public class Sound.InputPanel : Switchboard.SettingsPage {
         device_monitor.update_fraction.connect ((fraction) => {
             level_bar.value = fraction;
         });
-        map.connect (() => set_visibility (true));
-        unmap.connect (() => set_visibility (false));
+        map.connect (() => {
+            unowned var window = get_root () as Gtk.Window;
+            if (window != null) {
+                window.notify["suspended"].connect (update_monitor);
+            }
+            update_monitor ();
+        });
+        unmap.connect (() => {
+            unowned var window = get_root () as Gtk.Window;
+            if (window != null) {
+                window.notify.disconnect (update_monitor);
+            }
+            set_visibility (false);
+        });
 
         pam = PulseAudioManager.get_default ();
         echo_cancellation = pam.echo_cancellation;
@@ -154,6 +166,11 @@ public class Sound.InputPanel : Switchboard.SettingsPage {
         SignalHandler.unblock (echo_switch, echo_switch_handler);
         echo_status.label = echo_cancellation.error != null ? echo_cancellation.error : "";
         echo_status.visible = echo_status.label != "";
+    }
+
+    private void update_monitor () {
+        unowned var window = get_root () as Gtk.Window;
+        set_visibility (get_mapped () && window != null && !window.suspended);
     }
 
     private void set_visibility (bool is_visible) {
