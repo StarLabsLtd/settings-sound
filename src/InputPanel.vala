@@ -127,6 +127,8 @@ public class Sound.InputPanel : Switchboard.SettingsPage {
         device_monitor.update_fraction.connect ((fraction) => {
             level_bar.value = fraction;
         });
+        map.connect (() => set_visibility (true));
+        unmap.connect (() => set_visibility (false));
 
         pam = PulseAudioManager.get_default ();
         echo_cancellation = pam.echo_cancellation;
@@ -154,7 +156,7 @@ public class Sound.InputPanel : Switchboard.SettingsPage {
         echo_status.visible = echo_status.label != "";
     }
 
-    public void set_visibility (bool is_visible) {
+    private void set_visibility (bool is_visible) {
         monitor_visible = is_visible;
         if (is_visible && default_device != null) {
             device_monitor.start_record ();
