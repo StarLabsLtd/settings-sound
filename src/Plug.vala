@@ -60,10 +60,6 @@ public class Sound.Plug : Switchboard.Plug {
 
             var pam = PulseAudioManager.get_default ();
             pam.start ();
-
-            stack.notify["visible-child"].connect (() => {
-                input_panel.set_visibility (stack.visible_child_name == "input");
-            });
         }
 
         return paned;
@@ -71,9 +67,6 @@ public class Sound.Plug : Switchboard.Plug {
 
     public override void shown () {
         paned.show ();
-        if (stack.visible_child_name == "input") {
-            input_panel.set_visibility (true);
-        }
     }
 
     public override void hidden () {
