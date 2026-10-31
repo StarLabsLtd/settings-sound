@@ -83,6 +83,20 @@ public class Sound.InputPanel : Gtk.Box {
         device_monitor.update_fraction.connect ((fraction) => {
             level_bar.value = fraction;
         });
+        map.connect (() => {
+            unowned var window = get_root () as Gtk.Window;
+            if (window != null) {
+                window.notify["suspended"].connect (update_monitor);
+            }
+            update_monitor ();
+        });
+        unmap.connect (() => {
+            unowned var window = get_root () as Gtk.Window;
+            if (window != null) {
+                window.notify.disconnect (update_monitor);
+            }
+            set_visibility (false);
+        });
 
         pam = PulseAudioManager.get_default ();
         pam.new_device.connect (add_device);
@@ -93,7 +107,12 @@ public class Sound.InputPanel : Gtk.Box {
         connect_signals ();
     }
 
-    public void set_visibility (bool is_visible) {
+    private void update_monitor () {
+        unowned var window = get_root () as Gtk.Window;
+        set_visibility (get_mapped () && window != null && !window.suspended);
+    }
+
+    private void set_visibility (bool is_visible) {
         if (is_visible) {
             device_monitor.start_record ();
         } else {
