@@ -152,7 +152,7 @@ int main () {
     });
     uint phase = 0;
     bool updates_checked = false;
-    int64 clicked_at = 0;
+    int64 requested_at = 0;
     bool external_sink = false;
     bool external_source = false;
     bool race_with_aec = false;
@@ -190,10 +190,11 @@ int main () {
             });
         } else if (phase == 0) {
             assert (!toggle.active && toggle.sensitive);
-            toggle.activate ();
-            clicked_at = get_monotonic_time ();
+            // Request through active without depending on GTK activation animation.
+            toggle.active = !toggle.active;
+            requested_at = get_monotonic_time ();
             phase = 1;
-        } else if (phase == 1 && controller.enabled && get_monotonic_time () - clicked_at > 400000) {
+        } else if (phase == 1 && controller.enabled && get_monotonic_time () - requested_at > 400000) {
             assert (toggle.active);
             assert (pam.apps.get_n_items () == 0);
             context.connect (null, PulseAudio.Context.Flags.NOAUTOSPAWN);
@@ -215,7 +216,7 @@ int main () {
                 });
             });
         } else if (phase == 30 && toggle.sensitive) {
-            toggle.activate ();
+            toggle.active = !toggle.active;
             phase = 3;
         } else if (phase == 3 && !controller.enabled) {
             assert (pam.apps.get_n_items () == 1);
@@ -227,7 +228,7 @@ int main () {
                 phase = 40;
             });
         } else if (phase == 40 && toggle.sensitive) {
-            toggle.activate ();
+            toggle.active = !toggle.active;
             phase = 4;
         } else if (phase == 4 && controller.enabled) {
             var sample = PulseAudio.SampleSpec () {
@@ -343,7 +344,7 @@ int main () {
                 phase = 62;
             }
         } else if (phase == 60 && toggle.sensitive) {
-            toggle.activate ();
+            toggle.active = !toggle.active;
             phase = 6;
         } else if ((phase == 62 && controller.enabled) || (phase == 6 && !controller.enabled)) {
             race_with_aec = controller.enabled;
@@ -353,10 +354,10 @@ int main () {
                 subscribe.end (result);
                 pam.set_default_device.begin (other_device (false, ""));
                 pam.set_default_device.begin (other_device (true, ""));
-                clicked_at = get_monotonic_time ();
+                requested_at = get_monotonic_time ();
             });
         } else if (phase == 70 && external_sink && external_source &&
-                   get_monotonic_time () - clicked_at > 1000000 && controller.enabled == race_with_aec) {
+                   get_monotonic_time () - requested_at > 1000000 && controller.enabled == race_with_aec) {
             if (race_with_aec && (controller.source_master != "physical_input2" ||
                                  controller.sink_master != "physical_output2")) {
                 return Source.CONTINUE;
