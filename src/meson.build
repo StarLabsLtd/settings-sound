@@ -1,10 +1,13 @@
 plug_files = files(
+    'SpeakerEqualizer.vala',
+    'SpeakerEqualizerPanel.vala',
     'App.vala',
     'ApplicationsPanel.vala',
     'AppRow.vala',
     'CanberraGtk4.vala',
     'TestPopover.vala',
     'PulseAudioManager.vala',
+    'EchoCancellation.vala',
     'Plug.vala',
     'OutputPanel.vala',
     'InputPanel.vala',

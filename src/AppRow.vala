@@ -76,7 +76,12 @@ public class Sound.AppRow : Gtk.Grid {
             return;
         }
 
-        PulseAudioManager.get_default ().mute_application (app, custom != null ? custom : !app.muted);
+        bool muted = !app.muted;
+        if (custom != null) {
+            muted = custom;
+        }
+
+        PulseAudioManager.get_default ().mute_application (app, muted);
     }
 
     private void update () {
@@ -111,10 +116,10 @@ public class Sound.AppRow : Gtk.Grid {
 
         app.changed.connect (update);
         app.notify["hidden"].connect (() => {
-            visible = app.hidden;
+            visible = !app.hidden;
         });
 
-        visible = app.hidden;
+        visible = !app.hidden;
 
         volume_scale.set_value (app.volume);
     }

@@ -5,7 +5,7 @@
  * Authored by: Corentin Noël <corentin@elementary.io>
  */
 
-public class Sound.OutputPanel : Gtk.Box {
+public class Sound.OutputPanel : Switchboard.SettingsPage {
     public bool screen_reader_active { get; set; }
 
     private Device default_device = null;
@@ -17,6 +17,7 @@ public class Sound.OutputPanel : Gtk.Box {
     private unowned Canberra.Context? ca_context = null;
     private unowned PulseAudioManager pam;
     private Settings media_keys_settings;
+    private SpeakerEqualizerPanel equalizer = new SpeakerEqualizerPanel ();
 
     private string _screenreader_shortcut_label = "";
     private string screenreader_shortcut_label {
@@ -34,7 +35,15 @@ public class Sound.OutputPanel : Gtk.Box {
         }
     }
 
+    public OutputPanel () {
+        Object (
+            title: _("Output"),
+            icon: new ThemedIcon ("audio-speakers")
+        );
+    }
+
     construct {
+        show_end_title_buttons = true;
         var no_device_grid = new Granite.Placeholder (
             _("No Connected Output Devices Detected")
         ) {
@@ -43,18 +52,13 @@ public class Sound.OutputPanel : Gtk.Box {
         };
 
         devices_listbox = new Gtk.ListBox () {
-            activate_on_single_click = true,
-            vexpand = true
+            activate_on_single_click = true
         };
         devices_listbox.set_placeholder (no_device_grid);
         devices_listbox.add_css_class (Granite.STYLE_CLASS_RICH_LIST);
 
-        var scrolled = new Gtk.ScrolledWindow () {
-            child = devices_listbox
-        };
-
         var devices_frame = new Gtk.Frame (null) {
-            child = scrolled
+            child = devices_listbox
         };
 
         var volume_label = new Granite.HeaderLabel (_("Volume"));
@@ -136,13 +140,14 @@ public class Sound.OutputPanel : Gtk.Box {
         screen_reader_box.append (screen_reader_label);
         screen_reader_box.append (screen_reader_switch);
 
-        orientation = VERTICAL;
-        spacing = 18;
-        append (devices_frame);
-        append (output_grid);
-        append (alerts_box);
-        append (screen_reader_box);
-        append (test_button);
+        var content_box = new Gtk.Box (VERTICAL, 18);
+        content_box.append (devices_frame);
+        content_box.append (output_grid);
+        content_box.append (equalizer);
+        content_box.append (alerts_box);
+        content_box.append (screen_reader_box);
+        content_box.append (test_button);
+        child = content_box;
 
         var applications_settings = new GLib.Settings ("org.gnome.desktop.a11y.applications");
 
@@ -199,6 +204,7 @@ public class Sound.OutputPanel : Gtk.Box {
             }
 
             default_device = pam.default_output;
+            equalizer.set_device (default_device);
             if (default_device != null) {
                 if (volume_switch.active == default_device.is_muted) {
                     volume_switch.activate ();
